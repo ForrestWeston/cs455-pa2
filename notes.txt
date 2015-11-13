@@ -1,0 +1,51 @@
+
+coding routing algorithms
+
+Python would be the easiest language to use (perhaps GO?)
+
+Get updated zip file of the assignment
+
+create bash script for starting/stopping routers
+
+periodic updates (learn something about select)
+
+for connected datagram sockets: syscalls are socket, bind, AND connect
+sense you're connected, can only talk with that router, so in the future you know where msgs are coming from
+
+my code shouldn't use the link files, but looking at them lets you see the graph of routers
+
+A.cfg:
+	B 7 1 1
+
+	7 link cost from A to B
+	2nd number offset(+) from local(A) baseport
+	3rd number offset(+) from remote(B) baseport
+
+routers:
+	has the baseport number
+	used for unconnected UDP
+
+Look at "The Pocket Guide" book
+
+man select  (timeout is counter intuitive)
+
+might be good to generate own test based on examples with known solutions
+(no routers with more then 10 links or will need to change baseports to avoid collisions)
+
+Implementing the select loop that determines which socket to read: (call function FOO)
+
+Implementing the routing table/distance vector update algorithm (I strongly urge that the code for this NOT be embedded in the select loop, but rather in a separate function that the select loop code can call. (create function FOO)
+
+----------------------------------
+
+tmux for splitting terminal
+
+tail -f  (keep looking at the end of a file)
+
+program arg1 | ts >> output
+
+ts (adds timestamp)
+
+program arg1 | ts | tee output
+
+tee (stdout and to file)

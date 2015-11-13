@@ -1,0 +1,15 @@
+unassigned] - Reading the configuration files
+
+[unassigned] - Creating and connecting all the sockets
+
+[unassigned] - Designing data structures to hold information about which router is associated with which socket, etc.
+
+[unassigned] - Designing data structures for the distance vector storage and routing table storage.
+
+[unassigned] - Implementing the select loop that determines which socket to read
+
+[unassigned] - Implementing the routing table/distance vector update algorithm (I strongly urge that the code for this NOT be embedded in the select loop, but rather in a separate function that the select loop code can call.
+
+[unassigned] - Code to produce console output
+
+[unassigned] - Writing the initial draft of the COMMENTS file. All team members should participate in writing and editing the final file that gets turned in.

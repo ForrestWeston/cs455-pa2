@@ -1,0 +1,15 @@
+#!/usr/bin/python
+import socket
+import select
+
+INF = 64
+
+class RoutingTable:
+    #def __init__(self, host, baseport):
+    #    self.host, self.baseport = host, baseport;
+
+if __name__=='__main__':
+    import sys
+    #routerInfo = readrouters.readrouters(sys.argv[1])
+    #if len(sys.argv) == 3:
+    #    printTable(sys.argv[2], routerInfo)

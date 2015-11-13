@@ -6,7 +6,7 @@ class RouterInfo:
 class LinkInfo:
     def __init__(self, cost, locallink, remotelink):
         self.cost, self.locallink, self.remotelink = cost, locallink, remotelink;
-        
+
 def readrouters(testname):
     f = open(testname+'/routers')
     lines = f.readlines()
@@ -28,4 +28,4 @@ def readlinks(testname, router):
         table[words[0]] = LinkInfo(int(words[1]), int(words[2]), int(words[3]))
     f.close()
     return table
-    
+
