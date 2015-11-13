@@ -1,15 +1,70 @@
 #!/usr/bin/python
 import socket
 import select
+import readrouters
 
 INF = 64
 
+class Router:
+    def __init__(self, name, host, baseport, link_info):
+       self.name, self.host, self.baseport, self.links = name, host, baseport, link_info
+       print(self.name)
+       print(self.host)
+       print(self.baseport)
+
+    def initRoutingTable(self, routers_table):
+    	#Initialize routing table using self.links and RouterInfo
+    	print(routers_table)
+
+    	
+    	return
+
+
 class RoutingTable:
-    #def __init__(self, host, baseport):
-    #    self.host, self.baseport = host, baseport;
+    def __init__(self, host, baseport):
+       self.host, self.baseport = host, baseport
+
 
 if __name__=='__main__':
     import sys
-    #routerInfo = readrouters.readrouters(sys.argv[1])
-    #if len(sys.argv) == 3:
-    #    printTable(sys.argv[2], routerInfo)
+	# If no poison control
+		# sys.argv[1] = 'testdir'
+		# sys.argv[2] = 'routername'
+	# If poison control
+		# sys.argv[1] = '-p'
+		# sys.argv[2] = 'testdir'
+		# sys.argv[3] = 'routername'
+		
+    if len(sys.argv) == 3:
+    	poison_rev = False;
+    	testdir = sys.argv[1]
+    	routername = sys.argv[2]
+    elif len(sys.argv) == 4 and sys.argv[1] == "-p":
+    	poison_rev = True;
+    	testdir = sys.argv[2]
+    	routername = sys.argv[3]
+
+    # Use readrouters() to get table of all routers present in network
+    routersTable = readrouters.readrouters(testdir)
+
+    # Use readlinks() to get cost of each link to neighbors
+    linksTable = readrouters.readlinks(testdir, routername)
+
+    # Initialize a new Router()
+    node = Router(routername, routersTable[routername].host, routersTable[routername].baseport, linksTable)
+    node.initRoutingTable(routersTable) # use routersTable to know how many nodes in network
+
+    # Create sockets for baseport and neighbors
+
+    # Create a TCP/IP socket for the base port
+	# server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+	# server.setblocking(0)
+
+	# # Bind the socket to the port
+	# server_address = ('localhost', 10000)
+	# print >>sys.stderr, 'starting up on %s port %s' % server_address
+	# server.bind(server_address)
+
+	# # Listen for incoming connections
+	# server.listen(5)
+
