@@ -115,4 +115,18 @@ if __name__=='__main__':
             if data:
                 debug(str(data))
 
+            # if data is L or U messsage:
+                # make changes to own distance vector and routing table
+                # if changes to routing table:
+                    # send U-messages to neighbors
+                    # print(node.name - dest: <d> cost: <c> nexthop: <n>)
+
+            # if data is P message:
+                # if message is "P d":
+                    # print routing table entry for destination d
+                # if message is "P":
+                    # print all entries in routing table
+
+        # send U-message to each of its neighbors every 30 seconds
+
 
