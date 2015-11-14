@@ -4,25 +4,51 @@ import select
 import readrouters
 
 INF = 64
+debugging = True
+
+def debug(s):
+    if debugging:
+        print(s)
+    return
 
 class Router:
     def __init__(self, name, host, baseport, link_info):
        self.name, self.host, self.baseport, self.links = name, host, baseport, link_info
-       print(self.name)
-       print(self.host)
-       print(self.baseport)
+       self.routingTable = {} # key represents "from router" and value is a DistanceVector() that represents the costs to every other router
+       
+       debug(self.name)
+       debug(self.host)
+       debug(self.baseport)
 
     def initRoutingTable(self, routers_table):
     	#Initialize routing table using self.links and RouterInfo
-    	print(routers_table)
+        # can access cost to link with self.routingTable[self.name].costToDict[neighbor]
 
-    	
-    	return
+    	mine = DistanceVector(self.name, routers_table, self.links)
+        self.routingTable[self.name] = mine # create dist vector for self
 
+        for router in routers_table.keys(): # for each router
+            if router == self.name:
+                continue # skip own dist vect since already created
+            vect = DistanceVector(router, routers_table)
+            self.routingTable[router] = vect # create distance vector for all other nodes in network
 
-class RoutingTable:
-    def __init__(self, host, baseport):
-       self.host, self.baseport = host, baseport
+        for vectors in self.routingTable.keys():
+            debug(vectors + ": " + str(self.routingTable[vectors].costToDict))
+    	return # We need to implement a routing table that shows the next router to hop to as well
+
+class DistanceVector:
+    def __init__(self, for_router, routers_table, link_info=None): # Constructor for creating a distance vector with known link costs
+        self.costToDict = {} # key represents the "router sending to" and value represents "cost to router"
+        self.name = for_router # represents "from router"
+
+        for router in routers_table.keys():         # for each router
+            if router == for_router:                    # set cost to 0 if it is self
+                self.costToDict[router] = 0       
+            elif link_info is not None and router in link_info.keys():            #   set the cost of the link if neighbor
+                self.costToDict[router] = link_info[router].cost
+            else:
+                self.costToDict[router] = INF           #   otherwise set the cost to infinity
 
 
 if __name__=='__main__':
@@ -35,6 +61,7 @@ if __name__=='__main__':
 		# sys.argv[2] = 'testdir'
 		# sys.argv[3] = 'routername'
 		
+    # read in cmd line parameters
     if len(sys.argv) == 3:
     	poison_rev = False;
     	testdir = sys.argv[1]
@@ -46,7 +73,6 @@ if __name__=='__main__':
 
     # Use readrouters() to get table of all routers present in network
     routersTable = readrouters.readrouters(testdir)
-
     # Use readlinks() to get cost of each link to neighbors
     linksTable = readrouters.readlinks(testdir, routername)
 
@@ -54,17 +80,39 @@ if __name__=='__main__':
     node = Router(routername, routersTable[routername].host, routersTable[routername].baseport, linksTable)
     node.initRoutingTable(routersTable) # use routersTable to know how many nodes in network
 
-    # Create sockets for baseport and neighbors
+    # Create a socket for the base port
+    baseSock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    baseSock.bind((node.host, node.baseport)) # Bind the socket to the addr
 
-    # Create a TCP/IP socket for the base port
-	# server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-	# server.setblocking(0)
+    # Create connected sockets for neighbors
+    neighborSocks = {} # key represents neighbor and value reperesents the socket associated with neighbor
 
-	# # Bind the socket to the port
-	# server_address = ('localhost', 10000)
-	# print >>sys.stderr, 'starting up on %s port %s' % server_address
-	# server.bind(server_address)
+    i = 1
+    for link in linksTable.keys():
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        sock.connect((node.host, node.baseport+i)) # each neighbor has port num of baseport + i
+        neighborSocks[link] = sock
 
-	# # Listen for incoming connections
-	# server.listen(5)
+        i += 1
+
+    inputs = [baseSock] # Sockets from which we expect to read
+    for sock in neighborSocks.values():
+        inputs.append(sock) # add all neighbor sockets to inputs as well
+
+    # Select loop
+    debug(inputs)
+    while 1:
+        # wait for a socket to be ready
+        readable, writable, exceptional = select.select(inputs, [], [], 30) # only need readable set for project so writefds and exceptionfs is set to None
+
+        # handle inputs
+        for s in readable:
+            if s is baseSock:
+                data, addr = s.recvfrom(1024) # L & P messages
+            else:
+                data = s.recv(1024) # U messages
+
+            if data:
+                debug(str(data))
+
 

@@ -1,0 +1,54 @@
+int select(int nfds, fd_set *readfds, fd_set *writefds,
+           fd_set *exceptfds, struct timeval *timeout);
+
+fd_set readfds;
+FD_ZERO(&readfds); // make the set empty
+FD_SET(fd, &readfds); // include fd in the set
+FD_CLR(fd, &readfds); // remove fd from set
+FD_ISSET(fd, &readfds); // returns 1 if fd is in the set, 0 if not
+
+struct timeval{
+    time_t tv_sec;
+    time_t tv_usec;
+}
+
+only need readfds for project so `select(nfds, &readfds, NULL, NULL, &timeout);`
+
+select returns:
+    0 if no fds are ready (after a timeout)
+    >0 the number of ready fds
+    <0 errors
+
+Also, when select returns, the fd sets have been modified to tell your programs which fds are ready
+
+nfds is the (largest file descriptor number that appears in any of the fd sets) + 1
+
+HOW TO USE select():
+
+Initialize:
+    build a data struct containing all of the fds of interest (the socket fds FOR PROJECT)
+        - maybe an array named servSock
+        - fill in the array as you create the sockets
+        - computer nfds as you go
+
+Each time through the loop that contains select():
+    FD_ZERO(&readfds); // FD_ZERO(&writefds) if using
+
+    for (i=0; i < numSockets; i++){
+        FD_SET(servSock[i], &readfds);
+    }
+
+    setTimeout.tv_sec = timeout;
+    setTimeout.tv_usec = 0;
+
+    res = select(nfds, &readfds, NULL, NULL, &setTimeout);
+
+    if (res < 0) {error handling}
+
+    else if (res == 0) {timeout handling}
+
+    else{
+        for (i=0; i< numSockets; i++){
+            if (FD_ISSET(servSock[i], &readfds)) { do something with servSock[i] - for example read or recv }
+        }
+    }

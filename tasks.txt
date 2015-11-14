@@ -1,10 +1,10 @@
-unassigned] - Reading the configuration files
+[Done] - Reading the configuration files
 
 [unassigned] - Creating and connecting all the sockets
 
-[unassigned] - Designing data structures to hold information about which router is associated with which socket, etc.
+[Doneish?] - Designing data structures to hold information about which router is associated with which socket, etc.
 
-[unassigned] - Designing data structures for the distance vector storage and routing table storage.
+[Doneish?] - Designing data structures for the distance vector storage and routing table storage.
 
 [unassigned] - Implementing the select loop that determines which socket to read
 
