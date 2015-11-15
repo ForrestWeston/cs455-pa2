@@ -1,4 +1,5 @@
 #!/usr/bin/python
+import string
 import socket
 import select
 import readrouters
@@ -21,10 +22,10 @@ class Router:
        debug(self.baseport)
 
     def initRoutingTable(self, routers_table):
-    	#Initialize routing table using self.links and RouterInfo
+        #Initialize routing table using self.links and RouterInfo
         # can access cost to link with self.routingTable[self.name].costToDict[neighbor]
 
-    	mine = DistanceVector(self.name, routers_table, self.links)
+        mine = DistanceVector(self.name, routers_table, self.links)
         self.routingTable[self.name] = mine # create dist vector for self
 
         for router in routers_table.keys(): # for each router
@@ -33,9 +34,17 @@ class Router:
             vect = DistanceVector(router, routers_table)
             self.routingTable[router] = vect # create distance vector for all other nodes in network
 
+        return # We need to implement a routing table that shows the next router to hop to as well
+    
+    def printRouteTable(self):
         for vectors in self.routingTable.keys():
-            debug(vectors + ": " + str(self.routingTable[vectors].costToDict))
-    	return # We need to implement a routing table that shows the next router to hop to as well
+            print(vectors + ": " + str(self.routingTable[vectors].costToDict))
+        return
+    
+    def printEntry(self, dest):
+        print(dest + ": " + str(self.routingTable[dest].costToDict))
+        return
+        
 
 class DistanceVector:
     def __init__(self, for_router, routers_table, link_info=None): # Constructor for creating a distance vector with known link costs
@@ -44,7 +53,7 @@ class DistanceVector:
 
         for router in routers_table.keys():         # for each router
             if router == for_router:                    # set cost to 0 if it is self
-                self.costToDict[router] = 0       
+                self.costToDict[router] = 0
             elif link_info is not None and router in link_info.keys():            #   set the cost of the link if neighbor
                 self.costToDict[router] = link_info[router].cost
             else:
@@ -53,23 +62,23 @@ class DistanceVector:
 
 if __name__=='__main__':
     import sys
-	# If no poison control
-		# sys.argv[1] = 'testdir'
-		# sys.argv[2] = 'routername'
-	# If poison control
-		# sys.argv[1] = '-p'
-		# sys.argv[2] = 'testdir'
-		# sys.argv[3] = 'routername'
-		
+    # If no poison control
+        # sys.argv[1] = 'testdir'
+        # sys.argv[2] = 'routername'
+    # If poison control
+        # sys.argv[1] = '-p'
+        # sys.argv[2] = 'testdir'
+        # sys.argv[3] = 'routername'
+        
     # read in cmd line parameters
     if len(sys.argv) == 3:
-    	poison_rev = False;
-    	testdir = sys.argv[1]
-    	routername = sys.argv[2]
+        poison_rev = False;
+        testdir = sys.argv[1]
+        routername = sys.argv[2]
     elif len(sys.argv) == 4 and sys.argv[1] == "-p":
-    	poison_rev = True;
-    	testdir = sys.argv[2]
-    	routername = sys.argv[3]
+        poison_rev = True;
+        testdir = sys.argv[2]
+        routername = sys.argv[3]
 
     # Use readrouters() to get table of all routers present in network
     routersTable = readrouters.readrouters(testdir)
@@ -89,8 +98,16 @@ if __name__=='__main__':
 
     i = 1
     for link in linksTable.keys():
+        localPort = linksTable[link].locallink
+        remotePort = linksTable[link].remotelink
+        neighborBasePort = routersTable[link].baseport
+        
+        debug("binding to " + str(node.baseport + localPort))
+        debug("connecting to " + str(neighborBasePort + remotePort))
+        
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        sock.connect((node.host, node.baseport+i)) # each neighbor has port num of baseport + i
+        sock.bind((node.host, node.baseport+localPort))
+        res = sock.connect_ex((node.host, neighborBasePort+remotePort))
         neighborSocks[link] = sock
 
         i += 1
@@ -100,7 +117,6 @@ if __name__=='__main__':
         inputs.append(sock) # add all neighbor sockets to inputs as well
 
     # Select loop
-    debug(inputs)
     while 1:
         # wait for a socket to be ready
         readable, writable, exceptional = select.select(inputs, [], [], 30) # only need readable set for project so writefds and exceptionfs is set to None
@@ -110,10 +126,19 @@ if __name__=='__main__':
             if s is baseSock:
                 data, addr = s.recvfrom(1024) # L & P messages
             else:
-                data = s.recv(1024) # U messages
-
-            if data:
-                debug(str(data))
+                data = s.recv(2056) # U messages
+        
+            command = string.split(data)
+            
+            if command[0] == 'L':
+                debug("butts")
+            elif command[0] == 'U':
+                debug("butts")
+            elif command[0] == 'P':
+                if len(command) > 1: # specific router given
+                    node.printEntry(command[1])
+                else:
+                    node.printRouteTable()
 
             # if data is L or U messsage:
                 # make changes to own distance vector and routing table
@@ -121,12 +146,9 @@ if __name__=='__main__':
                     # send U-messages to neighbors
                     # print(node.name - dest: <d> cost: <c> nexthop: <n>)
 
-            # if data is P message:
-                # if message is "P d":
-                    # print routing table entry for destination d
-                # if message is "P":
-                    # print all entries in routing table
-
-        # send U-message to each of its neighbors every 30 seconds
-
+        # send U-message to each of its neighbors every 30 seconds after a timeout occurs
+        if (len(readable) == 0):
+            #for neighbor, sock in neighborSocks.items():
+                #sock.send("hello neighbor " + neighbor)
+            debug("timeout!")
 

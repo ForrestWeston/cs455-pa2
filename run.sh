@@ -1,5 +1,8 @@
 #!/bin/bash
 
 # -p optional flag indicating to use Poisson Reverse
-#router [-p] test1 A 8
-#router [-p] test1 B 8
+./router test1 A &
+./router test1 B &
+./router test1 C &
+./router test1 D &
+./router test1 E &
