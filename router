@@ -37,12 +37,16 @@ class Router:
         return # We need to implement a routing table that shows the next router to hop to as well
     
     def printRouteTable(self):
+        print("-------------------------------------")
+        print ("Routing Table For " + self.name)
+        print ("<from>: {<to>: <cost>}")
         for vectors in self.routingTable.keys():
             print(vectors + ": " + str(self.routingTable[vectors].costToDict))
+        print("-------------------------------------")
         return
     
-    def printEntry(self, dest):
-        print(dest + ": " + str(self.routingTable[dest].costToDict))
+    def updateLinkCost(self, dest, new_cost):
+        self.routingTable[self.name].costToDict[dest] = new_cost # update cost to neighbor in routing table
         return
         
 
@@ -131,14 +135,14 @@ if __name__=='__main__':
             command = string.split(data)
             
             if command[0] == 'L':
-                debug("butts")
+                node.updateLinkCost(command[1], command[2]) # update link cost to a neighbor
             elif command[0] == 'U':
                 debug("butts")
             elif command[0] == 'P':
-                if len(command) > 1: # specific router given
-                    node.printEntry(command[1])
-                else:
+                if len(command) > 1 and command[1] == node.name: # print table for this router only
                     node.printRouteTable()
+                else:
+                    node.printRouteTable() # print every routing table for every router
 
             # if data is L or U messsage:
                 # make changes to own distance vector and routing table
