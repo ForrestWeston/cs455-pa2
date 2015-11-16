@@ -13,8 +13,8 @@ def debug(s):
     return
 
 class Router:
-    def __init__(self, name, host, baseport, link_info):
-       self.name, self.host, self.baseport, self.links = name, host, baseport, link_info
+    def __init__(self, name, host, baseport, link_info, is_poisoned):
+       self.name, self.host, self.baseport, self.links, self.poisoned = name, host, baseport, link_info, is_poisoned
        self.routingTable = {} # key represents "from router" and value is a DistanceVector() that represents the costs to every other router
        self.forwardTable = {} # key represents "Destination" and value is "Next Hop" where "Next Hop will be a neighbor
        
@@ -84,9 +84,18 @@ class Router:
         
         distVect = self.routingTable[self.name] # get distance vector of self
         
-        for dest, cost in distVect.costToDict.items(): # build U message using distance vector
-            msg += dest + " "
-            msg += str(cost) + " "
+        if is_poisoned == False:
+            for dest, cost in distVect.costToDict.items(): # build U message using distance vector and no poison reverse
+                msg += dest + " "
+                msg += str(cost) + " "
+        else:
+            debug("posion!")
+            for sock, neighbor in neighbor_socks.items(): # poison reverse sends a different distnace vector to each neighbor
+                for router in self.routingTable.keys(): # for each neigbor and for every router
+                    if self.forwardTable[router] == neighbor: # if node routes through neighbor to get to router
+                        distVect.costToDict[router] = INF           # set cost to router to INFINITY
+                        
+                    
             
         for sock in neighbor_socks.keys():
             try:
@@ -128,7 +137,7 @@ if __name__=='__main__':
     linksTable = readrouters.readlinks(testdir, routername)
 
     # Initialize a new Router()
-    node = Router(routername, routersTable[routername].host, routersTable[routername].baseport, linksTable)
+    node = Router(routername, routersTable[routername].host, routersTable[routername].baseport, linksTable, poison_rev)
     node.initRoutingTable(routersTable) # use routersTable to know how many nodes in network
     node.initForwardingTable(routersTable)
 

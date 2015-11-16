@@ -1,0 +1,6 @@
+if node routes through n1 to get to n2
+    then node will send U message to n1 with distance from node to n2 set to INF
+
+
+if node.forwardTable[n2] == n1:
+    poisonVector.costToDict[n2] = INF
