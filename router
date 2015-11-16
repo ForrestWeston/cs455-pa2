@@ -129,10 +129,24 @@ def ParseUMessage(msg, neighbor, routers_table):
         i += 2
     return vector
 
-# updates routing table of <router> using the received distance vector <dist_vect> from <neighbor>
-def DistanceVectorAlgorithm(router, neighbor, dist_vect):
+# updates routing table of <router> using the received distance vector <neighbor_vect>
+def DistanceVectorAlgorithm(node, neighbor, neighbor_vect):
     changed = False # indicates if routing table has been changed
-    return
+    distVect = node.routingTable[node.name] # distance vector of self
+    
+    for router in node.routingTable.keys(): # for every router in network
+        if router == node.name:
+            continue # skip destination to self since always zero
+        newCost = int(distVect.costToDict[neighbor]) + int(neighbor_vect.costToDict[router])
+        if newCost < distVect.costToDict[router]:
+            changed = True
+            node.forwardTable[router] = neighbor # update forwarding table
+            distVect.costToDict[router] = newCost # update distance vector
+    
+    if changed:
+        node.routingTable[node.name] = distVect # update distance vector in routing table if changes been made
+        
+    return changed
 
 if __name__=='__main__':
     import sys
@@ -171,7 +185,7 @@ if __name__=='__main__':
     # Select loop
     while 1:
         # wait for a socket to be ready
-        readable, writable, exceptional = select.select(inputs, [], [], 30) # only need readable set for project so writefds and exceptionfs is set to []
+        readable, writable, exceptional = select.select(inputs, [], [], 10) # only need readable set for project so writefds and exceptionfs is set to []
 
         # handle sockets that are ready to receive data
         for s in readable:
