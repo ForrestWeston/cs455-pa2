@@ -138,7 +138,7 @@ def DistanceVectorAlgorithm(node, neighbor, neighbor_vect):
         if router == node.name:
             continue # skip destination to self since always zero
         newCost = int(distVect.costToDict[neighbor]) + int(neighbor_vect.costToDict[router])
-        if newCost < distVect.costToDict[router]:
+        if newCost < int(distVect.costToDict[router]):
             changed = True
             node.forwardTable[router] = neighbor # update forwarding table
             distVect.costToDict[router] = newCost # update distance vector
@@ -146,6 +146,7 @@ def DistanceVectorAlgorithm(node, neighbor, neighbor_vect):
     if changed:
         node.routingTable[node.name] = distVect # update distance vector in routing table if changes been made
         
+    debug(changed)
     return changed
 
 if __name__=='__main__':
@@ -207,6 +208,7 @@ if __name__=='__main__':
             elif command[0] == 'U':
                 neighbor = neighborSocks[s] # get neighbor that is sending the update message
                 debug(node.name + ": received U message from " + neighbor)
+                oldVect = node.routingTable[node.name] # save old vector for comparison later
                 # command[1] command[2].... is in the format of d1 cost1 d2 cost2 dn costn where dn and costn is cost of reaching dn from the neighbor
                 receivedVect = ParseUMessage(command, neighbor, routersTable) # Parse command to get distance vector
                 debug(node.name + ": " + neighbor + "'s dist vector: " + str(receivedVect.costToDict))
@@ -217,9 +219,12 @@ if __name__=='__main__':
                 else:
                     node.printRouteTable() # print every routing table for every router
                     
+            debug("tableUpdated: " + str(tableUpdated))
             if tableUpdated:
+                for dest, cost in node.routingTable[node.name].costToDict.items():
+                    if cost != oldVect.costToDict[dest]:
+                        print(node.name + " - dest: " + dest + " cost: " + cost + " nexthop: " + node.forwardTable[dest])
                 node.sendUMessage(neighborSocks) # send U messages to all neighbors if theres been changes to the routing table or own distance vector
-                # print(node.name - dest: <d> cost: <c> nexthop: node.forwardTable[<d>]) for every change in dest <d> (?)
                 
 
         # send U-message to each of its neighbors every 30 seconds after a timeout occurs
