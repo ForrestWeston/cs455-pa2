@@ -16,10 +16,19 @@ class Router:
     def __init__(self, name, host, baseport, link_info):
        self.name, self.host, self.baseport, self.links = name, host, baseport, link_info
        self.routingTable = {} # key represents "from router" and value is a DistanceVector() that represents the costs to every other router
+       self.forwardTable = {} # key represents "Destination" and value is "Next Hop" where "Next Hop will be a neighbor
        
        debug(self.name)
        debug(self.host)
        debug(self.baseport)
+       
+    def initForwardingTable(self, routers_table):
+        for router in routers_table.keys():
+            if router in self.links.keys():
+                self.forwardTable[router] = router # set neighbors 'next hop' to neighbor
+            else:
+                self.forwardTable[router] = None # initialize unknown destinations to no 'next hop'
+        debug(self.forwardTable)
 
     def initRoutingTable(self, routers_table):
         #Initialize routing table using self.links and RouterInfo
@@ -102,13 +111,6 @@ class DistanceVector:
 
 if __name__=='__main__':
     import sys
-    # If no poison control
-        # sys.argv[1] = 'testdir'
-        # sys.argv[2] = 'routername'
-    # If poison control
-        # sys.argv[1] = '-p'
-        # sys.argv[2] = 'testdir'
-        # sys.argv[3] = 'routername'
         
     # read in cmd line parameters
     if len(sys.argv) == 3:
@@ -128,6 +130,7 @@ if __name__=='__main__':
     # Initialize a new Router()
     node = Router(routername, routersTable[routername].host, routersTable[routername].baseport, linksTable)
     node.initRoutingTable(routersTable) # use routersTable to know how many nodes in network
+    node.initForwardingTable(routersTable)
 
     # Create a socket for the base port
     baseSock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -143,7 +146,7 @@ if __name__=='__main__':
     # Select loop
     while 1:
         # wait for a socket to be ready
-        readable, writable, exceptional = select.select(inputs, [], [], 10) # only need readable set for project so writefds and exceptionfs is set to []
+        readable, writable, exceptional = select.select(inputs, [], [], 30) # only need readable set for project so writefds and exceptionfs is set to []
 
         # handle sockets that are ready to receive data
         for s in readable:
@@ -179,7 +182,7 @@ if __name__=='__main__':
                     
             if tableUpdated:
                 node.sendUMessages(neighborSocks) # send U messages to all neighbors if theres been changes to the routing table or own distance vector
-                # print(node.name - dest: <d> cost: <c> nexthop: <n>) for every change in dest <d> (?)
+                # print(node.name - dest: <d> cost: <c> nexthop: node.forwardTable[<d>]) for every change in dest <d> (?)
                 
 
         # send U-message to each of its neighbors every 30 seconds after a timeout occurs
