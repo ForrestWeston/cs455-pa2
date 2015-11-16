@@ -27,11 +27,7 @@ class Router:
         for router in routers_table.keys():
             if router == self.name:
                 continue # dont add self to forwarding table
-            self.forwardTable[router] = None
-            # if router in self.links.keys():
-            #     self.forwardTable[router] = router # set neighbors 'next hop' to neighbor
-            # else:
-            #     self.forwardTable[router] = None # initialize unknown destinations to no 'next hop'
+            self.forwardTable[router] = None # Initialize forwarding table to None
         debug(self.forwardTable)
 
     def initRoutingTable(self, routers_table):
@@ -118,7 +114,9 @@ class Router:
     # updates routing table using the received distance vector <neighbor_vect>
     def DistanceVectorAlgorithm(self, neighbor, neighbor_vect):
         changed = False # indicates if routing table has been changed
-        distVect = self.routingTable[self.name] # distance vector of self
+        distVect = copy.copy(self.routingTable[self.name]) # distance vector of self
+
+        self.routingTable[neighbor] = copy.copy(neighbor_vect) # add neighbors vector to our routing table
         
         for router in self.routingTable.keys(): # for every router in network
             if router == self.name:
@@ -218,9 +216,8 @@ if __name__=='__main__':
                 node.updateLinkCost(command[1], command[2]) # update link cost to a neighbor
                 tableUpdated = True
             elif command[0] == 'U':
-                oldCosts = node.routingTable[node.name].costToDict.copy() # save old vector for comparison later
+                oldCosts = node.routingTable[node.name].costToDict.copy() # save old costs for comparison later
                 neighbor = neighborSocks[s] # get neighbor that is sending the update message
-                # command[1] command[2].... is in the format of d1 cost1 d2 cost2 dn costn where dn and costn is cost of reaching dn from the neighbor
                 receivedVect = ParseUMessage(command, neighbor, routersTable) # Parse command to get distance vector
                 tableUpdated = node.DistanceVectorAlgorithm(neighbor, receivedVect) # take received distance vector from neighbor and update node.routingTable using the Bellman-Ford Equation (pg. 373)
             elif command[0] == 'P':
