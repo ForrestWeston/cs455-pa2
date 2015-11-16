@@ -36,6 +36,24 @@ class Router:
 
         return # We need to implement a routing table that shows the next router to hop to as well
     
+    def initNeighborSockets(self, routers_table):
+        sockets = {}
+        
+        for neighbor in self.links.keys():
+            localPort = self.links[neighbor].locallink # offset of routers baseport
+            remotePort = self.links[neighbor].remotelink # offset of neighbors baseport
+            neighborBasePort = routers_table[neighbor].baseport
+            
+            debug("binding to " + str(self.baseport + localPort))
+            debug("connecting to " + str(neighborBasePort + remotePort))
+            
+            sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            sock.bind((self.host, self.baseport+localPort))
+            sock.connect((self.host, neighborBasePort+remotePort))
+            
+            sockets[sock] = neighbor
+        return sockets
+    
     def printRouteTable(self):
         print("-------------------------------------")
         print ("Routing Table For " + self.name)
@@ -62,7 +80,6 @@ class DistanceVector:
                 self.costToDict[router] = link_info[router].cost
             else:
                 self.costToDict[router] = INF           #   otherwise set the cost to infinity
-
 
 if __name__=='__main__':
     import sys
@@ -98,23 +115,7 @@ if __name__=='__main__':
     baseSock.bind((node.host, node.baseport)) # Bind the socket to the addr
 
     # Create connected sockets for neighbors
-    neighborSocks = {} # key represents socket and value reperesents the neighbor associated with socket
-
-    i = 1
-    for link in linksTable.keys():
-        localPort = linksTable[link].locallink # offset of routers baseport
-        remotePort = linksTable[link].remotelink # offset of neighbors baseport
-        neighborBasePort = routersTable[link].baseport
-        
-        debug("binding to " + str(node.baseport + localPort))
-        debug("connecting to " + str(neighborBasePort + remotePort))
-        
-        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        sock.bind((node.host, node.baseport+localPort))
-        sock.connect((node.host, neighborBasePort+remotePort))
-        
-        neighborSocks[sock] = link
-        i += 1
+    neighborSocks = node.initNeighborSockets(routersTable) # key represents socket and value reperesents the neighbor associated with socket
 
     inputs = [baseSock] # Sockets from which we expect to read
     for sock in neighborSocks.keys():
@@ -123,7 +124,7 @@ if __name__=='__main__':
     # Select loop
     while 1:
         # wait for a socket to be ready
-        readable, writable, exceptional = select.select(inputs, [], [], 30) # only need readable set for project so writefds and exceptionfs is set to None
+        readable, writable, exceptional = select.select(inputs, [], [], 30) # only need readable set for project so writefds and exceptionfs is set to []
 
         # handle sockets that are ready to receive data
         for s in readable:
