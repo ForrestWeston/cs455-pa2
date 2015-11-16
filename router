@@ -16,7 +16,7 @@ class Router:
     def __init__(self, name, host, baseport, link_info, is_poisoned):
        self.name, self.host, self.baseport, self.links, self.poisoned = name, host, baseport, link_info, is_poisoned
        self.routingTable = {} # key represents "from router" and value is a DistanceVector() that represents the costs to every other router
-       self.forwardTable = {} # key represents "Destination" and value is "Next Hop" where "Next Hop will be a neighbor
+       self.forwardTable = {} # key represents "Destination" and value is "Next Hop" where "Next Hop" will be a neighbor
        
        debug(self.name)
        debug(self.host)
@@ -73,7 +73,7 @@ class Router:
         return
     
     def updateLinkCost(self, dest, new_cost):
-        if dest not in self.link_info.keys(): # verify that given destination is a neighbor
+        if dest not in self.links.keys(): # verify that given destination is a neighbor
             debug(dest + " IS NOT A NEIGHBOR")
             return
         self.routingTable[self.name].costToDict[dest] = new_cost # update cost to neighbor in routing table
@@ -84,16 +84,16 @@ class Router:
         
         distVect = self.routingTable[self.name] # get distance vector of self
         
-        if is_poisoned == False:
+        if self.poisoned == False:
             for dest, cost in distVect.costToDict.items(): # build U message using distance vector and no poison reverse
                 msg += dest + " "
                 msg += str(cost) + " "
         else:
-            debug("posion!")
-            for sock, neighbor in neighbor_socks.items(): # poison reverse sends a different distnace vector to each neighbor
-                for router in self.routingTable.keys(): # for each neigbor and for every router
+            poisonVect = distVect # poison reverse sends a different distance vector to each neighbor
+            for sock, neighbor in neighbor_socks.items(): # for each neighbor
+                for router in self.routingTable.keys():     # for every router
                     if self.forwardTable[router] == neighbor: # if node routes through neighbor to get to router
-                        distVect.costToDict[router] = INF           # set cost to router to INFINITY
+                        poisonVect.costToDict[router] = INF           # set cost to router to INFINITY
                         
                     
             
@@ -117,6 +117,22 @@ class DistanceVector:
                 self.costToDict[router] = link_info[router].cost
             else:
                 self.costToDict[router] = INF           #   otherwise set the cost to infinity
+
+# parses received U message from <neighbor>, uses <routers_table> to initialize a distance vector, <msg> is the received U message parsed into a list
+def ParseUMessage(msg, neighbor, routers_table):
+    vector = DistanceVector(neighbor, routersTable) # init new distance vector
+    i = 1
+    while (i + 1) < len(msg): # set the cost of destinations from received U message
+        dest = msg[i]
+        cost = msg[i+1]
+        vector.costToDict[dest] = cost
+        i += 2
+    return vector
+
+# updates routing table of <router> using the received distance vector <dist_vect> from <neighbor>
+def DistanceVectorAlgorithm(router, neighbor, dist_vect):
+    changed = False # indicates if routing table has been changed
+    return
 
 if __name__=='__main__':
     import sys
@@ -178,11 +194,9 @@ if __name__=='__main__':
                 neighbor = neighborSocks[s] # get neighbor that is sending the update message
                 debug(node.name + ": received U message from " + neighbor)
                 # command[1] command[2].... is in the format of d1 cost1 d2 cost2 dn costn where dn and costn is cost of reaching dn from the neighbor
-                
-                # take received distance vector from neighbor and update node.routingTable using the Bellman-Ford Equation (pg. 373)
-                
-                # if there are changes to routing table
-                    # tableUpdated = True
+                receivedVect = ParseUMessage(command, neighbor, routersTable) # Parse command to get distance vector
+                debug(node.name + ": " + neighbor + "'s dist vector: " + str(receivedVect.costToDict))
+                tableUpdated = DistanceVectorAlgorithm(node, neighbor, receivedVect) # take received distance vector from neighbor and update node.routingTable using the Bellman-Ford Equation (pg. 373)
             elif command[0] == 'P':
                 if len(command) > 1 and command[1] == node.name: # print table for this router only
                     node.printRouteTable()
@@ -190,7 +204,7 @@ if __name__=='__main__':
                     node.printRouteTable() # print every routing table for every router
                     
             if tableUpdated:
-                node.sendUMessages(neighborSocks) # send U messages to all neighbors if theres been changes to the routing table or own distance vector
+                node.sendUMessage(neighborSocks) # send U messages to all neighbors if theres been changes to the routing table or own distance vector
                 # print(node.name - dest: <d> cost: <c> nexthop: node.forwardTable[<d>]) for every change in dest <d> (?)
                 
 

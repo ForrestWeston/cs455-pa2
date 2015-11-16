@@ -4,3 +4,9 @@ if node routes through n1 to get to n2
 
 if node.forwardTable[n2] == n1:
     poisonVector.costToDict[n2] = INF
+
+I am node x
+received Dv from neighbor v
+for every node y in network:
+    Dx(y) = minimum of {c(x,v) + Dv(y)}
+    
