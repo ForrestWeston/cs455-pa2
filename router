@@ -98,12 +98,12 @@ if __name__=='__main__':
     baseSock.bind((node.host, node.baseport)) # Bind the socket to the addr
 
     # Create connected sockets for neighbors
-    neighborSocks = {} # key represents neighbor and value reperesents the socket associated with neighbor
+    neighborSocks = {} # key represents socket and value reperesents the neighbor associated with socket
 
     i = 1
     for link in linksTable.keys():
-        localPort = linksTable[link].locallink
-        remotePort = linksTable[link].remotelink
+        localPort = linksTable[link].locallink # offset of routers baseport
+        remotePort = linksTable[link].remotelink # offset of neighbors baseport
         neighborBasePort = routersTable[link].baseport
         
         debug("binding to " + str(node.baseport + localPort))
@@ -111,13 +111,13 @@ if __name__=='__main__':
         
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         sock.bind((node.host, node.baseport+localPort))
-        res = sock.connect_ex((node.host, neighborBasePort+remotePort))
-        neighborSocks[link] = sock
-
+        sock.connect((node.host, neighborBasePort+remotePort))
+        
+        neighborSocks[sock] = link
         i += 1
 
     inputs = [baseSock] # Sockets from which we expect to read
-    for sock in neighborSocks.values():
+    for sock in neighborSocks.keys():
         inputs.append(sock) # add all neighbor sockets to inputs as well
 
     # Select loop
@@ -125,19 +125,20 @@ if __name__=='__main__':
         # wait for a socket to be ready
         readable, writable, exceptional = select.select(inputs, [], [], 30) # only need readable set for project so writefds and exceptionfs is set to None
 
-        # handle inputs
+        # handle sockets that are ready to receive data
         for s in readable:
             if s is baseSock:
                 data, addr = s.recvfrom(1024) # L & P messages
             else:
                 data = s.recv(2056) # U messages
         
-            command = string.split(data)
+            command = string.split(data) # parse received message
             
             if command[0] == 'L':
                 node.updateLinkCost(command[1], command[2]) # update link cost to a neighbor
             elif command[0] == 'U':
-                debug("butts")
+                neighbor = neighborSocks[s] # get neighbor that is sending the update message
+                debug("received U message from " + neighbor)
             elif command[0] == 'P':
                 if len(command) > 1 and command[1] == node.name: # print table for this router only
                     node.printRouteTable()
