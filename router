@@ -64,7 +64,26 @@ class Router:
         return
     
     def updateLinkCost(self, dest, new_cost):
+        if dest not in self.link_info.keys(): # verify that given destination is a neighbor
+            debug(dest + " IS NOT A NEIGHBOR")
+            return
         self.routingTable[self.name].costToDict[dest] = new_cost # update cost to neighbor in routing table
+        return
+    
+    def sendUMessage(self, neighbor_socks):
+        msg = "U "
+        
+        distVect = self.routingTable[self.name] # get distance vector of self
+        
+        for dest, cost in distVect.costToDict.items(): # build U message using distance vector
+            msg += dest + " "
+            msg += str(cost) + " "
+            
+        for sock in neighbor_socks.keys():
+            try:
+                sock.send(msg) # send U message to all neighbors
+            except Exception:
+                debug("failed to send to router " + neighbor_socks[sock])
         return
         
 
@@ -124,37 +143,47 @@ if __name__=='__main__':
     # Select loop
     while 1:
         # wait for a socket to be ready
-        readable, writable, exceptional = select.select(inputs, [], [], 30) # only need readable set for project so writefds and exceptionfs is set to []
+        readable, writable, exceptional = select.select(inputs, [], [], 10) # only need readable set for project so writefds and exceptionfs is set to []
 
         # handle sockets that are ready to receive data
         for s in readable:
+            tableUpdated = False
+            
             if s is baseSock:
-                data, addr = s.recvfrom(1024) # L & P messages
+                data, addr = s.recvfrom(2056) # received L or P messages from socket s
             else:
-                data = s.recv(2056) # U messages
+                try:
+                    data = s.recv(2056) # received U message from socket s
+                except Exception:
+                    continue
         
             command = string.split(data) # parse received message
             
             if command[0] == 'L':
                 node.updateLinkCost(command[1], command[2]) # update link cost to a neighbor
+                tableUpdated = True
             elif command[0] == 'U':
                 neighbor = neighborSocks[s] # get neighbor that is sending the update message
-                debug("received U message from " + neighbor)
+                debug(node.name + ": received U message from " + neighbor)
+                # command[1] command[2].... is in the format of d1 cost1 d2 cost2 dn costn where dn and costn is cost of reaching dn from the neighbor
+                
+                # take received distance vector from neighbor and update node.routingTable using the Bellman-Ford Equation (pg. 373)
+                
+                # if there are changes to routing table
+                    # tableUpdated = True
             elif command[0] == 'P':
                 if len(command) > 1 and command[1] == node.name: # print table for this router only
                     node.printRouteTable()
                 else:
                     node.printRouteTable() # print every routing table for every router
-
-            # if data is L or U messsage:
-                # make changes to own distance vector and routing table
-                # if changes to routing table:
-                    # send U-messages to neighbors
-                    # print(node.name - dest: <d> cost: <c> nexthop: <n>)
+                    
+            if tableUpdated:
+                node.sendUMessages(neighborSocks) # send U messages to all neighbors if theres been changes to the routing table or own distance vector
+                # print(node.name - dest: <d> cost: <c> nexthop: <n>) for every change in dest <d> (?)
+                
 
         # send U-message to each of its neighbors every 30 seconds after a timeout occurs
         if (len(readable) == 0):
-            #for neighbor, sock in neighborSocks.items():
-                #sock.send("hello neighbor " + neighbor)
-            debug("timeout!")
+            node.sendUMessage(neighborSocks)
+            debug(node.name + ": timeout!")
 
