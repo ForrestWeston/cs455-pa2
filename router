@@ -97,7 +97,7 @@ class Router:
                     if router == self.name:
                         continue # ignore self
                     if self.forwardTable[router] == neighbor: # if node routes through neighbor to get to router
-                        poisonVect.costToDict[router] = INF           # set cost to router to INFINITY  
+                        poisonVect.costToDict[router] = INF           # set cost to router to INFINITY
 
             for dest, cost in poisonVect.costToDict.items(): # build U message with poisoned vector
                 msg += dest + " "
@@ -195,7 +195,7 @@ if __name__=='__main__':
     # Select loop
     while 1:
         # wait for a socket to be ready
-        readable, writable, exceptional = select.select(inputs, [], [], 10) # only need readable set for project so writefds and exceptionfs is set to []
+        readable, writable, exceptional = select.select(inputs, [], [], 30) # only need readable set for project so writefds and exceptionfs is set to []
 
         # handle sockets that are ready to receive data
         for s in readable:

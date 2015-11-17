@@ -11,4 +11,16 @@ Note: If you run the program with Python 3.x then the program will crash because
         python router [-p] test1 [A|B|C|D|E]
     or
         python router [-p] test2 [A|B|C|D|E|F|G|H]
-                
+
+
+The following sends all output to OUTPUT.txt
+---------------------------------------------------
+-To run all routers at once without poison reverse:
+        run_test1.sh
+    or
+        run_test2.sh
+
+-To run all routers at once with poison reverse:
+        run_test1.sh -p
+    or
+        run_test2.sh -p
