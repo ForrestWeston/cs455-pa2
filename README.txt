@@ -24,3 +24,17 @@ The following sends all output to OUTPUT.txt
         run_test1.sh -p
     or
         run_test2.sh -p
+
+Note: after executing either script, to kill all the router processes just run:
+        killrouters.sh
+
+How to send L and P messages
+----------------------------------------
+-To change a link cost:
+        changelink [test1|test2] r1 r2 c
+
+-To print table of all routers:
+        printtables [test1|test2]
+
+-To print table of specific router:
+        printtables [test1|test2] N
