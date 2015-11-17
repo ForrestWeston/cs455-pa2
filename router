@@ -1,11 +1,12 @@
 #!/usr/bin/python
 import string
+import copy
 import socket
 import select
 import readrouters
 
 INF = 64
-debugging = True
+debugging = False
 
 def debug(s):
     if debugging:
@@ -24,10 +25,9 @@ class Router:
        
     def initForwardingTable(self, routers_table):
         for router in routers_table.keys():
-            if router in self.links.keys():
-                self.forwardTable[router] = router # set neighbors 'next hop' to neighbor
-            else:
-                self.forwardTable[router] = None # initialize unknown destinations to no 'next hop'
+            if router == self.name:
+                continue # dont add self to forwarding table
+            self.forwardTable[router] = None # Initialize forwarding table to None
         debug(self.forwardTable)
 
     def initRoutingTable(self, routers_table):
@@ -77,6 +77,7 @@ class Router:
             debug(dest + " IS NOT A NEIGHBOR")
             return
         self.routingTable[self.name].costToDict[dest] = new_cost # update cost to neighbor in routing table
+        self.forwardTable[dest] = dest
         return
     
     def sendUMessage(self, neighbor_socks):
@@ -89,21 +90,47 @@ class Router:
                 msg += dest + " "
                 msg += str(cost) + " "
         else:
-            poisonVect = distVect # poison reverse sends a different distance vector to each neighbor
+            poisonVect = copy.copy(distVect) # poison reverse sends a different distance vector to each neighbor
+            poisonVect.costToDict = copy.copy(distVect.costToDict) # perform a shallow copy of vector to make sure not to alter actual routing table
             for sock, neighbor in neighbor_socks.items(): # for each neighbor
                 for router in self.routingTable.keys():     # for every router
+                    if router == self.name:
+                        continue # ignore self
                     if self.forwardTable[router] == neighbor: # if node routes through neighbor to get to router
-                        poisonVect.costToDict[router] = INF           # set cost to router to INFINITY
-                        
-                    
+                        poisonVect.costToDict[router] = INF           # set cost to router to INFINITY  
+
+            for dest, cost in poisonVect.costToDict.items(): # build U message with poisoned vector
+                msg += dest + " "
+                msg += str(cost) + " "
             
         for sock in neighbor_socks.keys():
             try:
                 sock.send(msg) # send U message to all neighbors
             except Exception:
                 debug("failed to send to router " + neighbor_socks[sock])
+                continue
         return
         
+    # updates routing table using the received distance vector <neighbor_vect>
+    def DistanceVectorAlgorithm(self, neighbor, neighbor_vect):
+        changed = False # indicates if routing table has been changed
+        distVect = copy.copy(self.routingTable[self.name]) # distance vector of self
+
+        self.routingTable[neighbor] = copy.copy(neighbor_vect) # add neighbors vector to our routing table
+        
+        for router in self.routingTable.keys(): # for every router in network
+            if router == self.name:
+                continue # skip destination to self since always zero
+            newCost = int(distVect.costToDict[neighbor]) + int(neighbor_vect.costToDict[router])
+            if newCost < int(distVect.costToDict[router]):
+                changed = True
+                self.forwardTable[router] = neighbor # update forwarding table
+                distVect.costToDict[router] = newCost # update distance vector
+        
+        if changed:
+            self.routingTable[self.name] = distVect # update distance vector in routing table if changes been made
+            
+        return changed
 
 class DistanceVector:
     def __init__(self, for_router, routers_table, link_info=None): # Constructor for creating a distance vector with known link costs
@@ -118,6 +145,7 @@ class DistanceVector:
             else:
                 self.costToDict[router] = INF           #   otherwise set the cost to infinity
 
+
 # parses received U message from <neighbor>, uses <routers_table> to initialize a distance vector, <msg> is the received U message parsed into a list
 def ParseUMessage(msg, neighbor, routers_table):
     vector = DistanceVector(neighbor, routersTable) # init new distance vector
@@ -129,25 +157,6 @@ def ParseUMessage(msg, neighbor, routers_table):
         i += 2
     return vector
 
-# updates routing table of <router> using the received distance vector <neighbor_vect>
-def DistanceVectorAlgorithm(node, neighbor, neighbor_vect):
-    changed = False # indicates if routing table has been changed
-    distVect = node.routingTable[node.name] # distance vector of self
-    
-    for router in node.routingTable.keys(): # for every router in network
-        if router == node.name:
-            continue # skip destination to self since always zero
-        newCost = int(distVect.costToDict[neighbor]) + int(neighbor_vect.costToDict[router])
-        if newCost < int(distVect.costToDict[router]):
-            changed = True
-            node.forwardTable[router] = neighbor # update forwarding table
-            distVect.costToDict[router] = newCost # update distance vector
-    
-    if changed:
-        node.routingTable[node.name] = distVect # update distance vector in routing table if changes been made
-        
-    debug(changed)
-    return changed
 
 if __name__=='__main__':
     import sys
@@ -191,7 +200,7 @@ if __name__=='__main__':
         # handle sockets that are ready to receive data
         for s in readable:
             tableUpdated = False
-            
+
             if s is baseSock:
                 data, addr = s.recvfrom(2056) # received L or P messages from socket s
             else:
@@ -203,32 +212,29 @@ if __name__=='__main__':
             command = string.split(data) # parse received message
             
             if command[0] == 'L':
+                oldCosts = node.routingTable[node.name].costToDict.copy()
                 node.updateLinkCost(command[1], command[2]) # update link cost to a neighbor
                 tableUpdated = True
             elif command[0] == 'U':
+                oldCosts = node.routingTable[node.name].costToDict.copy() # save old costs for comparison later
                 neighbor = neighborSocks[s] # get neighbor that is sending the update message
-                debug(node.name + ": received U message from " + neighbor)
-                oldVect = node.routingTable[node.name] # save old vector for comparison later
-                # command[1] command[2].... is in the format of d1 cost1 d2 cost2 dn costn where dn and costn is cost of reaching dn from the neighbor
                 receivedVect = ParseUMessage(command, neighbor, routersTable) # Parse command to get distance vector
-                debug(node.name + ": " + neighbor + "'s dist vector: " + str(receivedVect.costToDict))
-                tableUpdated = DistanceVectorAlgorithm(node, neighbor, receivedVect) # take received distance vector from neighbor and update node.routingTable using the Bellman-Ford Equation (pg. 373)
+                tableUpdated = node.DistanceVectorAlgorithm(neighbor, receivedVect) # take received distance vector from neighbor and update node.routingTable using the Bellman-Ford Equation (pg. 373)
             elif command[0] == 'P':
                 if len(command) > 1 and command[1] == node.name: # print table for this router only
                     node.printRouteTable()
                 else:
                     node.printRouteTable() # print every routing table for every router
                     
-            debug("tableUpdated: " + str(tableUpdated))
             if tableUpdated:
                 for dest, cost in node.routingTable[node.name].costToDict.items():
-                    if cost != oldVect.costToDict[dest]:
-                        print(node.name + " - dest: " + dest + " cost: " + cost + " nexthop: " + node.forwardTable[dest])
+                    if cost != oldCosts[dest]:
+                        print(node.name + " - dest: " + str(dest) + " cost: " + str(cost) + " nexthop: " + str(node.forwardTable[dest]))
                 node.sendUMessage(neighborSocks) # send U messages to all neighbors if theres been changes to the routing table or own distance vector
                 
 
         # send U-message to each of its neighbors every 30 seconds after a timeout occurs
         if (len(readable) == 0):
-            node.sendUMessage(neighborSocks)
             debug(node.name + ": timeout!")
+            node.sendUMessage(neighborSocks)
 
